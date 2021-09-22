@@ -1,0 +1,232 @@
+---
+title: "Presettling Data"
+author: "Marie Riisgaard-Jensen"
+date: "31/08/2021"
+output: html_document
+---
+# Set WD 
+
+```{r}
+#Working directory
+setwd("C:/Users/marie/Google Drive/AAU/MasterProject/Programming/R/")
+
+#Packages
+library(ampvis2)
+library(tidyverse)
+library(dplyr)
+library(readxl)
+```
+
+```{r}
+#Load data into ampvis format
+dataPath <- "C:/Users/marie/Google Drive/AAU/MasterProject/Programming/R/raw_data/Presettling_data_20210916/"
+
+metadata <- read_xlsx(paste0(dataPath, "/metadata_4-Immigration-PreSettling.xlsx"))
+
+d <- amp_load(otutable = paste0(dataPath, "ASVtable_notax.tsv"), 
+              metadata = paste0(dataPath, "metadata_4-Immigration-PreSettling.xlsx"),
+              taxonomy = paste0(dataPath, "ASVs.R1.midas37.sintax")
+              )
+# Only metadata for 181 otus
+```
+
+Overview ordination: PCA
+```{r}
+amp_ordinate(d, 
+             type = "PCA",
+             sample_shape_by = "Location",
+             sample_color_by = "Plant",
+             #sample_label_by = "Location",
+             #sample_trajectory = "Plant",
+             #sample_trajectory_group = "Plant",
+            # 
+             species_plot = F,
+             # species_label_taxonomy = "Species",
+             # species_nlabels = 10,
+            # sample_colorframe = "Location",
+            # sample_colorframe_label = "Plant",
+             detailed_output = F, 
+             sample_point_size = 5,
+             sample_label_size = 3)
+```
+
+Subsettting
+```{r}
+#Subsetting
+
+#First look at a overview by typing the name of Ampvis2 element: 
+d
+#Filter by min reads
+d_min_reads_5000 <- amp_subset_samples(d, minreads = 5000)
+
+#Filter by only influent and removing swichesd sample
+d_influent = amp_subset_samples(d_min_reads_5000, Location %in% "Influent" & !SampleID %in% c('16SAMP-8969')
+ )
+
+#Renaming Before? to Before
+d_influent$metadata <- d_influent$metadata %>% 
+  mutate(PrimarySettling = recode(PrimarySettling,
+                         "Before?"="Before")
+                         ) 
+
+d_influent_without_Viborg <- amp_subset_samples(d_influent, !Plant %in% 'Viborg')
+
+d_influent_Hjorring <- amp_subset_samples(d_influent, Plant %in% 'Hjoerring')
+
+d_influent_Randers <- amp_subset_samples(d_influent, Plant %in% 'Randers')
+
+d_influent_Viborg <- amp_subset_samples(d_influent, Plant %in% 'Viborg')
+
+```
+
+Rarefaction curve
+```{r}
+amp_rarecurve(d_influent, 
+              color_by = 'PrimarySettling')
+
+```
+
+
+Heatmap
+```{r}
+
+amp_heatmap(d_influent,
+            group_by = "PrimarySettling",
+            tax_aggregate = "Genus",
+            tax_add = "Phylum",
+            tax_show = 25,
+            color_vector = c("white", "darkred"),
+            plot_colorscale = "sqrt",
+            plot_values = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, size=10, vjust = 1),
+        axis.text.y = element_text(size=8),
+        legend.position="right")
+
+```
+
+
+Boxplot
+```{r}
+
+amp_boxplot(d_influent, group_by = 'PrimarySettling') + 
+  ggtitle('PrimarySettling, by before and after') + 
+  theme(plot.title = element_text(size = 20, hjust = 0.5))
+
+
+
+amp_boxplot(d_influent, group_by = 'Plant') + 
+  ggtitle('PrimarySettling, by plant') + 
+  theme(plot.title = element_text(size = 20, hjust = 0.5))
+
+
+
+
+```
+
+
+
+Ordination plot
+```{r}
+#Ordination plot by Before and after presettling
+amp_ordinate(d_influent, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_shape_by = "PrimarySettling",
+             sample_colorframe = TRUE,
+             sample_colorframe_label = "PrimarySettling",
+             species_plot = TRUE,
+             sample_color_by = 'Plant')
+
+#Ordination plot by Plant
+amp_ordinate(d_influent, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "Plant",
+             sample_colorframe = TRUE,
+             sample_colorframe_label = "Plant",
+             species_plot = TRUE,
+             sample_shape_by = 'PrimarySettling')
+
+#Ordination plot by Before and after presettling without Viborg
+amp_ordinate(d_influent_without_Viborg, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "PrimarySettling",
+             sample_colorframe = TRUE,
+             sample_colorframe_label = "PrimarySettling",
+             species_plot = TRUE,
+             sample_shape_by = 'Plant')
+
+#Ordination plot by Plant
+amp_ordinate(d_influent_without_Viborg, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "Plant",
+             sample_colorframe = TRUE,
+             sample_colorframe_label = "Plant",
+             species_plot = TRUE,
+             sample_shape_by = 'PrimarySettling')
+
+## Each plant by date
+amp_ordinate(d_influent_Hjorring, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "PrimarySettling",
+             #sample_colorframe = TRUE,
+             sample_trajectory = 'Date_rawdata',
+             sample_trajectory_group = 'PrimarySettling',
+             species_plot = TRUE)
+
+amp_ordinate(d_influent_Randers, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "PrimarySettling",
+             #sample_colorframe = TRUE,
+             sample_trajectory = 'Date_rawdata',
+             sample_trajectory_group = 'PrimarySettling',
+             species_plot = TRUE)
+
+amp_ordinate(d_influent_Viborg, 
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "PrimarySettling",
+             #sample_colorframe = TRUE,
+             sample_trajectory = 'Date_rawdata',
+             sample_trajectory_group = 'PrimarySettling',
+             species_plot = TRUE)
+
+amp_ordinate(d_influent,
+             type = "PCA",
+             distmeasure = "bray",
+             sample_color_by = "PrimarySettling",
+             #sample_colorframe = TRUE,
+             sample_trajectory = 'Date_rawdata',
+             sample_trajectory_group = 'PrimarySettling',
+             species_plot = TRUE,
+             sample_shape_by = 'Plant'
+)
+
+
+```
+
+
+Venn Diagram
+```{r}
+amp_venn(d_influent, 
+         group_by = "PrimarySettling",
+         cut_f = 20, ##Defalt 80
+         detailed_output = F)
+
+```
+
+Diversity
+```{r}
+
+amp_alphadiv(data = d)
+
+```
+
+
+
+
+
